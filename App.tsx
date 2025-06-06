@@ -48,16 +48,13 @@ export default function App() {
   return (
     <LiveAPIProvider apiKey={API_KEY}>
       <div className="app">
-        <div className="app-background"></div>
-        <div className="app-container">
-          <Header />
-          <main className="main-content">
-            <KeynoteCompanion />
-            <ControlTray />
-          </main>
-          {showUserConfig && <UserSettings />}
-          {showAgentEdit && <AgentEdit />}
-        </div>
+        <Header />
+        <main className="main-content">
+          <KeynoteCompanion />
+          <ControlTray />
+        </main>
+        {showUserConfig && <UserSettings />}
+        {showAgentEdit && <AgentEdit />}
       </div>
     </LiveAPIProvider>
   );

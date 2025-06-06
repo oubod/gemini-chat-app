@@ -15,31 +15,35 @@ export default function Header() {
     useAgent();
   const { disconnect } = useLiveAPIContext();
 
-  let [showRoomList, setShowRoomList] = useState(false);
+  const [showRoomList, setShowRoomList] = useState(false);
 
   useEffect(() => {
-    addEventListener('click', () => setShowRoomList(false));
-    return () => removeEventListener('click', () => setShowRoomList(false));
+    const handleClick = () => setShowRoomList(false);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
   }, []);
 
-  function changeAgent(agent: Agent | string) {
+  const handleAgentChange = (agentId: string) => {
     disconnect();
-    setCurrent(agent);
-  }
+    setCurrent(agentId);
+    setShowRoomList(false);
+  };
 
-  function addNewChatterBot() {
-    disconnect();
-    addAgent(createNewAgent());
+  const handleCreateAgent = () => {
+    const newAgent = createNewAgent();
+    addAgent(newAgent);
+    setCurrent(newAgent.id);
     setShowAgentEdit(true);
-  }
+    setShowRoomList(false);
+  };
 
   return (
     <header className="header">
-      <div className="header-content container">
+      <div className="header-content">
         <div className="header-left">
           <button
             className="mobile-menu-button"
-            onClick={e => {
+            onClick={(e) => {
               e.stopPropagation();
               setShowRoomList(!showRoomList);
             }}
@@ -49,25 +53,34 @@ export default function Header() {
           <h1 className="header-title">Gemini Chat</h1>
         </div>
 
-        <nav className={c('nav-menu', { 'nav-menu-open': showRoomList })}>
-          {availablePresets.map(agent => (
+        <nav className={c('agent-selector', { 'open': showRoomList })}>
+          <div className="agent-list">
+            {availablePresets.map((agent) => (
+              <button
+                key={agent.id}
+                className={c('agent-item', { 'active': current === agent.id })}
+                onClick={() => handleAgentChange(agent.id)}
+              >
+                {agent.name}
+              </button>
+            ))}
+            {availablePersonal.map((agent) => (
+              <button
+                key={agent.id}
+                className={c('agent-item', { 'active': current === agent.id })}
+                onClick={() => handleAgentChange(agent.id)}
+              >
+                {agent.name}
+              </button>
+            ))}
             <button
-              key={agent.id}
-              className={c('nav-item', { active: current === agent.id })}
-              onClick={() => changeAgent(agent.id)}
+              className="agent-item create-agent"
+              onClick={handleCreateAgent}
             >
-              {agent.name}
+              <span className="material-symbols-outlined">add</span>
+              New Agent
             </button>
-          ))}
-          {availablePersonal.map(agent => (
-            <button
-              key={agent.id}
-              className={c('nav-item', { active: current === agent.id })}
-              onClick={() => changeAgent(agent.id)}
-            >
-              {agent.name}
-            </button>
-          ))}
+          </div>
         </nav>
 
         <div className="header-right">
