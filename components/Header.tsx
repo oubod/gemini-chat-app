@@ -34,81 +34,52 @@ export default function Header() {
   }
 
   return (
-    <header>
-      <div className="roomInfo">
-        <div className="roomName">
+    <header className="header">
+      <div className="header-content container">
+        <div className="header-left">
           <button
+            className="mobile-menu-button"
             onClick={e => {
               e.stopPropagation();
               setShowRoomList(!showRoomList);
             }}
           >
-            <h1 className={c({ active: showRoomList })}>
-              {current.name}
-              <span className="icon">arrow_drop_down</span>
-            </h1>
+            <span className="material-symbols-outlined">menu</span>
           </button>
-
-          <button
-            onClick={() => setShowAgentEdit(true)}
-            className="button createButton"
-          >
-            <span className="icon">edit</span> Edit ChatterBot
-          </button>
+          <h1 className="header-title">Gemini Chat</h1>
         </div>
 
-        <div className={c('roomList', { active: showRoomList })}>
-          <div>
-            <h3>Presets</h3>
-            <ul>
-              {availablePresets
-                .filter(agent => agent.id !== current.id)
-                .map(agent => (
-                  <li
-                    key={agent.name}
-                    className={c({ active: agent.id === current.id })}
-                  >
-                    <button onClick={() => changeAgent(agent)}>
-                      {agent.name}
-                    </button>
-                  </li>
-                ))}
-            </ul>
-          </div>
-
-          <div>
-            <h3>Your ChatterBots</h3>
-            {
-              <ul>
-                {availablePersonal.length ? (
-                  availablePersonal.map(({ id, name }) => (
-                    <li key={name} className={c({ active: id === current.id })}>
-                      <button onClick={() => changeAgent(id)}>{name}</button>
-                    </li>
-                  ))
-                ) : (
-                  <p>None yet.</p>
-                )}
-              </ul>
-            }
+        <nav className={c('nav-menu', { 'nav-menu-open': showRoomList })}>
+          {availablePresets.map(agent => (
             <button
-              className="newRoomButton"
-              onClick={() => {
-                addNewChatterBot();
-              }}
+              key={agent.id}
+              className={c('nav-item', { active: current === agent.id })}
+              onClick={() => changeAgent(agent.id)}
             >
-              <span className="icon">add</span>New ChatterBot
+              {agent.name}
             </button>
-          </div>
+          ))}
+          {availablePersonal.map(agent => (
+            <button
+              key={agent.id}
+              className={c('nav-item', { active: current === agent.id })}
+              onClick={() => changeAgent(agent.id)}
+            >
+              {agent.name}
+            </button>
+          ))}
+        </nav>
+
+        <div className="header-right">
+          <button
+            className="user-button"
+            onClick={() => setShowUserConfig(!showUserConfig)}
+          >
+            <span className="material-symbols-outlined">account_circle</span>
+            <span className="user-name">{name}</span>
+          </button>
         </div>
       </div>
-      <button
-        className="userSettingsButton"
-        onClick={() => setShowUserConfig(!showUserConfig)}
-      >
-        {name || 'Your name'}
-        <span className="icon">tune</span>
-      </button>
     </header>
   );
 }
