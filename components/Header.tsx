@@ -23,9 +23,9 @@ export default function Header() {
     return () => document.removeEventListener('click', handleClick);
   }, []);
 
-  const handleAgentChange = (agentId: string) => {
+  const handleAgentChange = (agent: Agent) => {
     disconnect();
-    setCurrent(agentId);
+    setCurrent(agent);
     setShowRoomList(false);
   };
 
@@ -41,6 +41,7 @@ export default function Header() {
     <header className="header">
       <div className="header-content">
         <div className="header-left">
+          <h1 className="app-title">Gemini Chat</h1>
           <button
             className="mobile-menu-button"
             onClick={(e) => {
