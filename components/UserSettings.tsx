@@ -2,7 +2,6 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import Modal from './Modal';
 import { useUI, useUser } from '@/lib/state';
 
 export default function UserSettings() {
@@ -14,9 +13,11 @@ export default function UserSettings() {
   }
 
   return (
-    <Modal onClose={() => setShowUserConfig(false)}>
-      <div className="userSettings">
-        <p>
+    <div className="welcome-screen">
+      <div className="welcome-logo">Gemini Chat</div>
+      <div className="welcome-card">
+        <h1 className="welcome-title">Welcome to Gemini Chat!</h1>
+        <p className="welcome-description">
           This is a simple tool that allows you to design, test, and banter with
           custom AI characters on the fly.
         </p>
@@ -28,31 +29,34 @@ export default function UserSettings() {
             updateClient();
           }}
         >
-          <p>Adding this optional info makes the experience more fun:</p>
+          <p className="welcome-description">Tell us about yourself:</p>
 
-          <div>
-            Your name
+          <div className="form-group">
+            <label className="form-label">Your name</label>
             <input
               type="text"
+              className="form-input"
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="What do you like to be called?"
             />
           </div>
 
-          <div>
-            Your info
+          <div className="form-group">
+            <label className="form-label">A bit about you</label>
             <textarea
-              rows={3}
+              className="form-input form-textarea"
               value={info}
               onChange={e => setInfo(e.target.value)}
-              placeholder="Things we should know about you… Likes, dislikes, hobbies, interests, favorite movies, books, tv shows, foods, etc."
+              placeholder="Share your interests, hobbies, favorite movies, books, etc. This helps make our conversation more personalized!"
             />
           </div>
 
-          <button className="button primary">Let’s go!</button>
+          <button type="submit" className="start-button">
+            Let's get started!
+          </button>
         </form>
       </div>
-    </Modal>
+    </div>
   );
 }
