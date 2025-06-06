@@ -15,6 +15,7 @@ export default function KeynoteCompanion() {
   const faceCanvasRef = useRef<HTMLCanvasElement>(null);
   const user = useUser();
   const { current } = useAgent();
+  const hasGreeted = useRef(false);
 
   // Set the configuration for the Live API
   useEffect(() => {
@@ -35,24 +36,32 @@ export default function KeynoteCompanion() {
     });
   }, [setConfig, user, current]);
 
-  // Initiate the session when the Live API connection is established
-  // Instruct the model to send an initial greeting message
+  // Send initial greeting when connected
   useEffect(() => {
     const beginSession = async () => {
-      if (!connected) return;
-      client.send(
-        {
-          text: 'Greet the user and introduce yourself and your role.',
-        },
-        true
-      );
+      if (!connected || hasGreeted.current) return;
+
+      try {
+        await client.send(
+          {
+            text: 'Greet the user and introduce yourself and your role.',
+          },
+          true
+        );
+        hasGreeted.current = true;
+      } catch (err) {
+        console.error('Error sending initial greeting:', err);
+        // Reset flag to try again
+        hasGreeted.current = false;
+      }
     };
+
     beginSession();
   }, [client, connected]);
 
   return (
     <div className="keynote-companion">
-      <BasicFace canvasRef={faceCanvasRef!} color={current.bodyColor} />
+      <BasicFace canvasRef={faceCanvasRef} color={current.bodyColor} />
     </div>
   );
 }

@@ -18,8 +18,10 @@
  * limitations under the License.
  */
 
-import { createContext, FC, ReactNode, useContext } from 'react';
+import React, { createContext, FC, ReactNode, useContext, useEffect, useRef } from 'react';
+import { AudioStreamer } from '../lib/audio-streamer';
 import { useLiveApi, UseLiveApiResults } from '../hooks/media/use-live-api';
+import { audioContext } from '../lib/utils';
 
 const LiveAPIContext = createContext<UseLiveApiResults | undefined>(undefined);
 
@@ -32,10 +34,67 @@ export const LiveAPIProvider: FC<LiveAPIProviderProps> = ({
   apiKey,
   children,
 }) => {
-  const liveAPI = useLiveApi({ apiKey });
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioStreamerRef = useRef<AudioStreamer | null>(null);
+
+  // Initialize audio context
+  useEffect(() => {
+    const initAudio = async () => {
+      try {
+        if (!audioContextRef.current) {
+          audioContextRef.current = await audioContext();
+          audioStreamerRef.current = new AudioStreamer(audioContextRef.current);
+        }
+      } catch (err) {
+        console.error('Failed to initialize audio context:', err);
+      }
+    };
+
+    const handleInteraction = () => {
+      initAudio();
+      // Remove event listeners after initialization
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
+    };
+
+    window.addEventListener('click', handleInteraction);
+    window.addEventListener('touchstart', handleInteraction);
+    window.addEventListener('keydown', handleInteraction);
+
+    return () => {
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
+    };
+  }, []);
+
+  const {
+    client,
+    config,
+    setConfig,
+    connect,
+    connected,
+    disconnect,
+    volume,
+  } = useLiveApi({
+    apiKey,
+    audioStreamer: audioStreamerRef.current,
+  });
 
   return (
-    <LiveAPIContext.Provider value={liveAPI}>
+    <LiveAPIContext.Provider
+      value={{
+        client,
+        config,
+        setConfig,
+        connect,
+        connected,
+        disconnect,
+        volume,
+        audioContext: audioContextRef.current,
+      }}
+    >
       {children}
     </LiveAPIContext.Provider>
   );
@@ -44,7 +103,7 @@ export const LiveAPIProvider: FC<LiveAPIProviderProps> = ({
 export const useLiveAPIContext = () => {
   const context = useContext(LiveAPIContext);
   if (!context) {
-    throw new Error('useLiveAPIContext must be used wihin a LiveAPIProvider');
+    throw new Error('useLiveAPIContext must be used within a LiveAPIProvider');
   }
   return context;
 };

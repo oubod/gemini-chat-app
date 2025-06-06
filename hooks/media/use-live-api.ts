@@ -26,60 +26,58 @@ import { audioContext } from '../../lib/utils';
 import VolMeterWorket from '../../lib/worklets/vol-meter';
 import { DEFAULT_LIVE_API_MODEL } from '../../lib/constants';
 
-export type UseLiveApiResults = {
+export interface UseLiveApiResults {
   client: GenAILiveClient;
+  config: LiveConnectConfig | undefined;
   setConfig: (config: LiveConnectConfig) => void;
-  config: LiveConnectConfig;
-
   connect: () => Promise<void>;
-  disconnect: () => void;
   connected: boolean;
-
+  disconnect: () => Promise<void>;
   volume: number;
-};
+  audioContext?: AudioContext;
+}
+
+interface UseLiveApiProps {
+  apiKey: string;
+  model?: string;
+  audioStreamer?: AudioStreamer | null;
+}
 
 export function useLiveApi({
   apiKey,
   model = DEFAULT_LIVE_API_MODEL,
-}: {
-  apiKey: string;
-  model?: string;
-}): UseLiveApiResults {
-  const client = useMemo(() => new GenAILiveClient(apiKey, model), [apiKey]);
-
-  const audioStreamerRef = useRef<AudioStreamer | null>(null);
-
+  audioStreamer: externalAudioStreamer,
+}: UseLiveApiProps): UseLiveApiResults {
+  const client = useMemo(() => new GenAILiveClient(apiKey, model), [apiKey, model]);
   const [volume, setVolume] = useState(0);
   const [connected, setConnected] = useState(false);
-  const [config, setConfig] = useState<LiveConnectConfig>({});
+  const [config, setConfig] = useState<LiveConnectConfig>();
+  
+  const audioStreamerRef = useRef<AudioStreamer | null>(null);
 
-  // register audio for streaming server -> speakers
+  // Initialize audio if not provided externally
   useEffect(() => {
-    if (!audioStreamerRef.current) {
-      audioContext({ id: 'audio-out' }).then((audioCtx: AudioContext) => {
-        audioStreamerRef.current = new AudioStreamer(audioCtx);
-        audioStreamerRef.current
-          .addWorklet<any>('vumeter-out', VolMeterWorket, (ev: any) => {
+    if (externalAudioStreamer) {
+      audioStreamerRef.current = externalAudioStreamer;
+    } else {
+      const initAudio = async () => {
+        try {
+          const ctx = await audioContext({ id: 'audio-out' });
+          audioStreamerRef.current = new AudioStreamer(ctx);
+          await audioStreamerRef.current.addWorklet('vumeter-out', VolMeterWorket, (ev: any) => {
             setVolume(ev.data.volume);
-          })
-          .then(() => {
-            // Successfully added worklet
-          })
-          .catch(err => {
-            console.error('Error adding worklet:', err);
           });
-      });
+        } catch (err) {
+          console.error('Error initializing audio:', err);
+        }
+      };
+      initAudio();
     }
-  }, [audioStreamerRef]);
+  }, [externalAudioStreamer]);
 
   useEffect(() => {
-    const onOpen = () => {
-      setConnected(true);
-    };
-
-    const onClose = () => {
-      setConnected(false);
-    };
+    const onOpen = () => setConnected(true);
+    const onClose = () => setConnected(false);
 
     const stopAudioStreamer = () => {
       if (audioStreamerRef.current) {
@@ -93,14 +91,12 @@ export function useLiveApi({
       }
     };
 
-    // Bind event listeners
     client.on('open', onOpen);
     client.on('close', onClose);
     client.on('interrupted', stopAudioStreamer);
     client.on('audio', onAudio);
 
     return () => {
-      // Clean up event listeners
       client.off('open', onOpen);
       client.off('close', onClose);
       client.off('interrupted', stopAudioStreamer);
@@ -114,12 +110,12 @@ export function useLiveApi({
     }
     client.disconnect();
     await client.connect(config);
-  }, [client, setConnected, config]);
+  }, [client, config]);
 
   const disconnect = useCallback(async () => {
     client.disconnect();
     setConnected(false);
-  }, [setConnected, client]);
+  }, [client]);
 
   return {
     client,
@@ -129,5 +125,6 @@ export function useLiveApi({
     connected,
     disconnect,
     volume,
+    audioContext: audioStreamerRef.current?.context,
   };
 }

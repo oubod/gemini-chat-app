@@ -19,7 +19,6 @@
  */
 
 import cn from 'classnames';
-
 import { memo, ReactNode, useEffect, useRef, useState } from 'react';
 import { AudioRecorder } from '../../../lib/audio-recorder';
 
@@ -33,52 +32,106 @@ export type ControlTrayProps = {
 function ControlTray({ children }: ControlTrayProps) {
   const [audioRecorder] = useState(() => new AudioRecorder());
   const [muted, setMuted] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const connectButtonRef = useRef<HTMLButtonElement>(null);
 
   const { showAgentEdit, showUserConfig } = useUI();
-  const { client, connected, connect, disconnect } = useLiveAPIContext();
+  const { client, connected, connect, disconnect, audioContext } = useLiveAPIContext();
 
-  // Stop the current agent if the user is editing the agent or user config
+  // Stop current agent if editing agent or user config
   useEffect(() => {
     if (showAgentEdit || showUserConfig) {
       if (connected) disconnect();
     }
   }, [showUserConfig, showAgentEdit, connected, disconnect]);
 
+  // Auto-focus connect button when disconnected
   useEffect(() => {
     if (!connected && connectButtonRef.current) {
       connectButtonRef.current.focus();
     }
   }, [connected]);
 
+  // Handle audio recording
   useEffect(() => {
     const onData = (base64: string) => {
-      client.sendRealtimeInput([
-        {
-          mimeType: 'audio/pcm;rate=16000',
-          data: base64,
-        },
-      ]);
+      if (connected && !muted) {
+        client.sendRealtimeInput([
+          {
+            mimeType: 'audio/pcm;rate=16000',
+            data: base64,
+          },
+        ]);
+      }
     };
-    if (connected && !muted && audioRecorder) {
-      audioRecorder.on('data', onData).start();
-    } else {
-      audioRecorder.stop();
-    }
+
+    const onError = (err: Error) => {
+      console.error('Audio recording error:', err);
+      setMuted(true);
+      setIsRecording(false);
+    };
+
+    audioRecorder.on('data', onData);
+    audioRecorder.on('error', onError);
+
     return () => {
       audioRecorder.off('data', onData);
+      audioRecorder.off('error', onError);
     };
   }, [connected, client, muted, audioRecorder]);
+
+  // Handle recording state
+  useEffect(() => {
+    const startRecording = async () => {
+      try {
+        if (connected && !muted && audioContext?.state === 'running') {
+          await audioRecorder.start();
+          setIsRecording(true);
+        }
+      } catch (err) {
+        console.error('Failed to start recording:', err);
+        setMuted(true);
+        setIsRecording(false);
+      }
+    };
+
+    if (connected && !muted) {
+      startRecording();
+    } else {
+      audioRecorder.stop();
+      setIsRecording(false);
+    }
+  }, [connected, muted, audioRecorder, audioContext]);
+
+  const handleMicToggle = () => {
+    setMuted(!muted);
+  };
+
+  const handleConnectionToggle = async () => {
+    if (connected) {
+      disconnect();
+    } else {
+      try {
+        await connect();
+      } catch (err) {
+        console.error('Connection error:', err);
+      }
+    }
+  };
 
   return (
     <section className="control-tray">
       <nav className={cn('actions-nav', { disabled: !connected })}>
         <button
-          className={cn('action-button mic-button')}
-          onClick={() => setMuted(!muted)}
+          className={cn('action-button mic-button', { active: !muted && isRecording })}
+          onClick={handleMicToggle}
+          disabled={!connected}
+          title={muted ? 'Unmute microphone' : 'Mute microphone'}
         >
           {!muted ? (
-            <span className="material-symbols-outlined filled">mic</span>
+            <span className="material-symbols-outlined filled">
+              {isRecording ? 'mic' : 'mic_none'}
+            </span>
           ) : (
             <span className="material-symbols-outlined filled">mic_off</span>
           )}
@@ -90,15 +143,12 @@ function ControlTray({ children }: ControlTrayProps) {
         <div className="connection-button-container">
           <button
             ref={connectButtonRef}
-            className={cn('action-button connect-toggle', { connected })}
-            onClick={connected ? disconnect : connect}
+            className="connection-button"
+            onClick={handleConnectionToggle}
           >
-            <span className="material-symbols-outlined filled">
-              {connected ? 'pause' : 'play_arrow'}
-            </span>
+            {connected ? 'Disconnect' : 'Connect'}
           </button>
         </div>
-        <span className="text-indicator">Streaming</span>
       </div>
     </section>
   );
