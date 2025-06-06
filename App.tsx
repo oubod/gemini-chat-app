@@ -25,7 +25,7 @@ import KeynoteCompanion from './components/demo/keynote-companion/KeynoteCompani
 import Header from './components/Header';
 import UserSettings from './components/UserSettings';
 import { LiveAPIProvider } from './contexts/LiveAPIContext';
-import { useUI, useUser } from './lib/state';
+import { useUI } from './lib/state';
 
 const API_KEY = process.env.GEMINI_API_KEY as string;
 if (typeof API_KEY !== 'string') {
@@ -38,28 +38,27 @@ if (typeof API_KEY !== 'string') {
  * Main application component that provides a streaming interface for Live API.
  * Manages video streaming state and provides controls for webcam/screen capture.
  */
-function App() {
+export default function App() {
   const { showUserConfig, showAgentEdit } = useUI();
+
+  if (typeof API_KEY !== 'string') {
+    return <ErrorScreen />;
+  }
+
   return (
-    <div className="App">
-      <LiveAPIProvider apiKey={API_KEY}>
-        <ErrorScreen />
-        <Header />
-
-        {showUserConfig && <UserSettings />}
-        {showAgentEdit && <AgentEdit />}
-        <div className="streaming-console">
-          <main>
-            <div className="main-app-area">
-              <KeynoteCompanion />
-            </div>
-
-            <ControlTray></ControlTray>
+    <LiveAPIProvider apiKey={API_KEY}>
+      <div className="app">
+        <div className="app-background"></div>
+        <div className="app-container">
+          <Header />
+          <main className="main-content">
+            <KeynoteCompanion />
+            <ControlTray />
           </main>
+          {showUserConfig && <UserSettings />}
+          {showAgentEdit && <AgentEdit />}
         </div>
-      </LiveAPIProvider>
-    </div>
+      </div>
+    </LiveAPIProvider>
   );
 }
-
-export default App;
